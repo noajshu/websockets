@@ -1,3 +1,4 @@
+import logging
 from typing import List, NewType, Optional, Tuple, Union
 
 
@@ -12,6 +13,8 @@ Types supported in a WebSocket message:
 
 """
 
+LoggerLike = Union[logging.Logger, logging.LoggerAdapter]
+LoggerLike.__doc__ = """"Types accepted where :class:`~logging.Logger` is expected"""
 
 Origin = NewType("Origin", str)
 Origin.__doc__ = """Value of a Origin header"""

@@ -29,6 +29,7 @@ from .http11 import Request, Response
 from .typing import (
     ConnectionOption,
     ExtensionHeader,
+    LoggerLike,
     Origin,
     Subprotocol,
     UpgradeProtocol,
@@ -41,8 +42,6 @@ from .legacy.server import *  # isort:skip  # noqa
 
 
 __all__ = ["ServerConnection"]
-
-logger = logging.getLogger(__name__)
 
 
 HeadersLikeOrCallable = Union[HeadersLike, Callable[[str, Headers], HeadersLike]]
@@ -59,8 +58,16 @@ class ServerConnection(Connection):
         subprotocols: Optional[Sequence[Subprotocol]] = None,
         extra_headers: Optional[HeadersLikeOrCallable] = None,
         max_size: Optional[int] = 2 ** 20,
+        logger: Optional[LoggerLike] = None,
     ):
-        super().__init__(side=SERVER, state=CONNECTING, max_size=max_size)
+        if logger is None:
+            logger = logging.getLogger("websockets.server")
+        super().__init__(
+            side=SERVER,
+            state=CONNECTING,
+            max_size=max_size,
+            logger=logger,
+        )
         self.origins = origins
         self.available_extensions = extensions
         self.available_subprotocols = subprotocols
@@ -80,13 +87,13 @@ class ServerConnection(Connection):
         try:
             key, extensions_header, protocol_header = self.process_request(request)
         except InvalidOrigin as exc:
-            logger.debug("Invalid origin", exc_info=True)
+            self.logger.debug("Invalid origin", exc_info=True)
             return self.reject(
                 http.HTTPStatus.FORBIDDEN,
                 f"Failed to open a WebSocket connection: {exc}.\n",
             )._replace(exception=exc)
         except InvalidUpgrade as exc:
-            logger.debug("Invalid upgrade", exc_info=True)
+            self.logger.debug("Invalid upgrade", exc_info=True)
             return self.reject(
                 http.HTTPStatus.UPGRADE_REQUIRED,
                 (
@@ -98,13 +105,13 @@ class ServerConnection(Connection):
                 headers=Headers([("Upgrade", "websocket")]),
             )._replace(exception=exc)
         except InvalidHandshake as exc:
-            logger.debug("Invalid handshake", exc_info=True)
+            self.logger.debug("Invalid handshake", exc_info=True)
             return self.reject(
                 http.HTTPStatus.BAD_REQUEST,
                 f"Failed to open a WebSocket connection: {exc}.\n",
             )._replace(exception=exc)
         except Exception as exc:
-            logger.warning("Error in opening handshake", exc_info=True)
+            self.logger.warning("Error in opening handshake", exc_info=True)
             return self.reject(
                 http.HTTPStatus.INTERNAL_SERVER_ERROR,
                 (
@@ -410,15 +417,15 @@ class ServerConnection(Connection):
         if response.status_code == 101:
             self.set_state(OPEN)
 
-        logger.debug(
+        self.logger.debug(
             "%s > HTTP/1.1 %d %s",
             self.side,
             response.status_code,
             response.reason_phrase,
         )
-        logger.debug("%s > %r", self.side, response.headers)
+        self.logger.debug("%s > %r", self.side, response.headers)
         if response.body is not None:
-            logger.debug("%s > body (%d bytes)", self.side, len(response.body))
+            self.logger.debug("%s > body (%d bytes)", self.side, len(response.body))
 
         self.writes.append(response.serialize())
 
