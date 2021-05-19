@@ -101,7 +101,7 @@ async def run_client(
 ) -> None:
     try:
         # https://stackoverflow.com/questions/54101923/1006-connection-closed-abnormally-error-with-python-3-7-websockets
-        websocket = await connect(uri, ping_interval=None)
+        websocket = await connect(uri, ping_interval=1)
     except Exception as exc:
         print_over_input(f"Failed to connect to {uri}: {exc}.")
         exit_from_event_loop_thread(loop, stop)
