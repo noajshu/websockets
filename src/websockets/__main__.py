@@ -9,6 +9,11 @@ from typing import Any, Set
 from .exceptions import ConnectionClosed, format_close
 from .legacy.client import connect
 
+import logging
+logger = logging.getLogger('websockets')
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
+
 
 if sys.platform == "win32":
 
